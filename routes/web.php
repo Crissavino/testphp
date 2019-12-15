@@ -11,6 +11,14 @@
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
+
+Auth::routes();
+
+Route::get('/home', 'PeliculasController@perfilUsuario')->name('home')->middleware('auth');
+Route::get('/', 'PeliculasController@index')->name('inicio');
+Route::get('/filtradas', 'PeliculasController@filtroView')->name('filtradas');
+
+Route::post('/guardarPeliFavorita', 'PeliculasController@guardarPeliFav');
+Route::delete('/deletePeliFavorita/{peliId}', 'PeliculasController@deletePeliFav');
+
+// Route::put('/guardarActoresIds/{peliId}', 'PeliculasController@guardarActoresIds');
