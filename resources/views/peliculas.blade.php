@@ -167,6 +167,8 @@
                     })
                     .then(function(myJson) {
                         infoPelicula = myJson;
+                        infoPelicula.idMovieDB = movieId;
+                        infoPelicula.posicion_toprated = (indice + 1);
                         if (pelisIds.includes(movieId)) {
                             peliculasFavoritas.forEach(peliFav => {
                                 if (movieId === peliFav.idMovieDB) {

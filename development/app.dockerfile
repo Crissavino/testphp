@@ -27,8 +27,9 @@ RUN  apt-get install -y libmcrypt-dev \
         && docker-php-ext-install pdo_mysql \
         && docker-php-ext-enable mcrypt
 
+RUN apt-get install -y redis-server
+
 RUN mv .env.prod .env
 
-# RUN php artisan optimize
 RUN php artisan key:generate
 RUN php artisan config:cache
