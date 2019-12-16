@@ -38,6 +38,7 @@ class getAPIData implements ShouldQueue
     {     
         $apiKey = '77a05aec0e235c4962c40565514582e8';
 
+        // inicio un array vacio para cargarlo con la informacion completa de las peliculas
         $peliculas = [];
         // llamada cURL para obtener las 100 mejores peliculas
         for ($i=1; $i < 6; $i++) { 
@@ -50,7 +51,7 @@ class getAPIData implements ShouldQueue
             $pelis = json_decode(curl_exec($ch));
             curl_close($ch); 
             foreach ($pelis->results as $indice => $peli) {
-                // obtengo y guardo los id de los actores de cada pelicula en un string para dsp poder filtrarlos con eloquent
+                // obtengo y guardo los id de los actores de cada pelicula en un string para dsp poder filtrarlos
                 $ch = curl_init();
 
                 curl_setopt($ch, CURLOPT_URL, "https://api.themoviedb.org/3/movie/". $peli->id ."?language=en-US&api_key=". $apiKey . "&append_to_response=credits");
@@ -60,7 +61,8 @@ class getAPIData implements ShouldQueue
                 $peliConActor = json_decode(curl_exec($ch));
 
                 curl_close($ch); 
-                // dd($peliConActor);
+
+                // guardo toda la informacion obtenida en el array $data
                 $data = [
                     'idMovieDB' => $peliConActor->id,
                     'title' => $peliConActor->title,
@@ -78,21 +80,21 @@ class getAPIData implements ShouldQueue
                     'release_date' => $peliConActor->release_date,
                     'cast' => json_encode($peliConActor->credits->cast),
                 ];
+
+                // guardo, en cada posicion, la data de cada pelicula
                 $peliculas[] = $data;
             }
         }
-        // dd($peliculas);
-        // Save data
+        // Guardo la data
         $this->saveData($peliculas);
     }
 
     public function saveData($peliculas)
     {
+        // guardo la info en el cache, esto se ejecuta en segundo plano
         $pelisEnRedis = [];
-        // dd('$peliculas');
         foreach ($peliculas as $peli) {
             $pelisEnRedis[] = $peli;
-            // \App\Pelicula::create($peli);
         }
         Cache::put('pelisEnRedis', [json_encode($pelisEnRedis)]);
 

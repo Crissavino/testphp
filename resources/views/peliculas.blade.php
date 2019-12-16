@@ -38,61 +38,18 @@
     
     <script>
 
-        async function obtenerActoresIdsYguardarlos(){
-            let apiKey ='77a05aec0e235c4962c40565514582e8';
-            let todasPelis = {!! json_encode(Cache::store('redis')->get('peliculas')) !!};
-            
-            todasPelis.forEach(async peli => {
-                // await setTimeout(() => {
-                    await fetch("https://api.themoviedb.org/3/movie/"+ peli.idMovieDB +"?language=en-US&api_key="+ apiKey + "&append_to_response=credits")
-                        .then(function(response) {
-                            return response.json();
-                        })
-                        .then(async function(myJson) {
-                            let actoresIds = [];
-                            myJson.credits.cast.forEach(async actor => {
-                                await actoresIds.push({id: actor.id})
-                            });
-                            let url = '/guardarActoresIds/'+ (todasPelis.indexOf(peli)+1);
-                            // await console.log(actoresIds);
-                            fetch(url, {
-                                    method: 'PUT', // or 'PUT'
-                                    body: JSON.stringify({actoresIds}), // data can be `string` or {object}!
-                                    credentials: "same-origin",
-                                    headers:{
-                                        'Content-Type': 'application/json',
-                                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                                    }
-                                }).then(res => res.text())
-                                .catch(error => console.error('Error:', error))
-                                .then(response => {
-                                    console.log('Success:', response)
-                                });
-                        });
-                // }, 2000);
-
-                esperar = async () => {
-                    if (await (todasPelis.indexOf(peli)+1) === 100) {
-                        setTimeout(() => {
-                            let btnTopPelis = document.querySelector('.btnTopPelis');
-                            btnTopPelis.setAttribute('style', 'display:block')
-                        }, 500);
-                    }
-                }
-                esperar();
-            });
-        }
-
-        // obtenerActoresIdsYguardarlos();
-
-        
+        // al clickear el boton Ver informacion, se ejecuta la funcion mostrarMas donde paso como parametros
+        // el id de TMDB de la pelicula y el indice de la misma
         function mostrarMas(movieId, indice){
             
             let apiKey ='77a05aec0e235c4962c40565514582e8';
             let URL = "https://api.themoviedb.org/3/movie/"+ movieId +"?language=en-US&api_key="+ apiKey + "&append_to_response=credits";
+            // obtengo del cache la data completa de las pelicuals
             let peliculasRedisCache = JSON.parse({!! json_encode(Cache::get('pelisEnRedis')[0]) !!});
             let infoPelicula = [];
+            
             @auth
+                // si el usuario esta logueado
                 let user = {!! json_encode(auth()->user()) !!}
                 const peliculasFavoritas = {!!  json_encode(auth()->user()->peliculas) !!};
                 let pelisIds = []
@@ -102,16 +59,18 @@
                 });
                 let tablePeliId;
 
+                // si el cache ya esta cargado, existe
                 if (peliculasRedisCache) {
+                    // obtengo la informacion de la pelicula clickeada
                     peliculasRedisCache.forEach(peli => {
                         if (peli.idMovieDB === movieId) {
                             myJson = peli
                             infoPelicula = peli;
-                            console.log(myJson);
-                            
                         }
                     });
+                    // compruebo si la pelicula clickeada ya es una pelicula favorita
                     if (pelisIds.includes(movieId)) {
+                        // si es una pelicula favorita, doy la opcion de Quitar de los favoritos
                         peliculasFavoritas.forEach(peliFav => {
                             if (movieId === peliFav.idMovieDB) {
                                 tablePeliId = peliFav.id
@@ -139,6 +98,7 @@
                         })
                             
                     } else {
+                        // si no es una pelicula favorita, doy la opcion de Agregar a favoritos
                         Swal.fire({
                             title: '<h5 class="modal-title" id="exampleModalLabel">' + myJson.title + ' - ' + myJson.release_date + '</h5>',
                             html:
@@ -160,16 +120,21 @@
                         })
                     }
                 } else {
-                    // si no hay cache 
+
+                    // si el cache no esta cargado, no existe
+                    // realizo una llamada fetch para que se pueda ejecutar la aplicacion correctamente
                     fetch(URL)
                     .then(function(response) {
                         return response.json();
                     })
                     .then(function(myJson) {
+                        // obtengo la informacion de la pelicula clickeada
                         infoPelicula = myJson;
                         infoPelicula.idMovieDB = movieId;
                         infoPelicula.posicion_toprated = (indice + 1);
+                        // compruebo si la pelicula clickeada ya es una pelicula favorita
                         if (pelisIds.includes(movieId)) {
+                            // si es una pelicula favorita, doy la opcion de Quitar de los favoritos
                             peliculasFavoritas.forEach(peliFav => {
                                 if (movieId === peliFav.idMovieDB) {
                                     tablePeliId = peliFav.id
@@ -199,6 +164,7 @@
                             })
                             
                         } else {
+                            // si no es una pelicula favorita, doy la opcion de Agregar a favoritos
                             Swal.fire({
                                 title: '<h5 class="modal-title" id="exampleModalLabel">' + myJson.title + ' - ' + myJson.release_date + '</h5>',
                                 html:
@@ -249,6 +215,7 @@
                             .then(response => {
                                 console.log('Success:', response)
                                 setTimeout(() => {
+                                    // recargo la pagina
                                     window.location.reload()
                                 }, 500);
                             });
@@ -276,6 +243,7 @@
 
                                 setTimeout(() => {
                                     window.location.reload()
+                                    // recargo la pagina
                                 }, 500);
                             });
                             
@@ -283,11 +251,15 @@
                     }
                 }, 1000);
             @else
+            // si el usuario no esta autenticado
             fetch(URL)
                 .then(function(response) {
                     return response.json();
                 })
                 .then(function(myJson) {
+                    // le doy la opcion de agregar a favoritos
+                    // pero cuando clickea lo envio al loguearse
+                    // y si no, registrarse
                     Swal.fire({
                         title: '<h5 class="modal-title" id="exampleModalLabel">' + myJson.title + ' - ' + myJson.release_date + '</h5>',
                         html:
@@ -313,42 +285,6 @@
                     
                 });
             @endauth
-        }
-
-        // let btnFiltro = document.querySelector('.btnFiltro');
-        // btnFiltro.addEventListener('click', () => {
-            
-        // })
-
-        function filtrarPelis(){
-            let tabla = document.querySelector('.table');
-            // tabla.innerHTML = " "
-            let apiKey ='77a05aec0e235c4962c40565514582e8';
-            let idpPeliculasConKR = []
-            fetch("https://api.themoviedb.org/3/person/6384/combined_credits?api_key="+ apiKey)
-                .then(function(response) {
-                    return response.json();
-                })
-                .then(function(myJson) {
-                    myJson.cast.forEach(element => {
-                        idpPeliculasConKR.push(element.id)
-                    });
-
-                    const urlFiltro = '/filtroPeliculas'
-                    fetch(urlFiltro, {
-                        method: 'POST', // or 'PUT'
-                        body: JSON.stringify(idpPeliculasConKR), // data can be `string` or {object}!
-                        credentials: "same-origin",
-                        headers:{
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                        }
-                    }).then(res => res.text())
-                    .catch(error => console.error('Error:', error))
-                    .then(response => {
-                        console.log('Success:', response)
-                    });
-                });
         }
     </script>
 @endsection

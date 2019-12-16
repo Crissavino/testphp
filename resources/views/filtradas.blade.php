@@ -35,32 +35,39 @@
     
     <script>
         
+        // al clickear el boton Ver informacion, se ejecuta la funcion mostrarMas donde paso como parametros
+        // el id de TMDB de la pelicula y el indice de la misma
         function mostrarMas(movieId, indice){
             
             let apiKey ='77a05aec0e235c4962c40565514582e8';
             let URL = "https://api.themoviedb.org/3/movie/"+ movieId +"?language=en-US&api_key="+ apiKey + "&append_to_response=credits";
+            // obtengo del cache la data completa de las pelicuals
             let peliculasRedisCache = JSON.parse({!! json_encode(Cache::get('pelisEnRedis')[0]) !!});
             let infoPelicula = [];
+
             @auth
+                // si el usuario esta logueado
                 let user = {!! json_encode(auth()->user()) !!}
                 const peliculasFavoritas = {!!  json_encode(auth()->user()->peliculas) !!};
                 let pelisIds = []
                 peliculasFavoritas.forEach(peliFav => {
-                    // const info = JSON.parse(peliFav['infoPelicula']);
                     pelisIds.push(peliFav.idMovieDB)
                 });
                 let tablePeliId;
 
+                // si el cache ya esta cargado, existe
                 if (peliculasRedisCache) {
+                    // obtengo la informacion de la pelicula clickeada
                     peliculasRedisCache.forEach(peli => {
                         if (peli.idMovieDB === movieId) {
                             myJson = peli
                             infoPelicula = peli;
-                            console.log(myJson);
-                            
                         }
                     });
+
+                    // compruebo si la pelicula clickeada ya es una pelicula favorita
                     if (pelisIds.includes(movieId)) {
+                        // si es una pelicula favorita, doy la opcion de Quitar de los favoritos
                         peliculasFavoritas.forEach(peliFav => {
                             if (movieId === peliFav.idMovieDB) {
                                 tablePeliId = peliFav.id
@@ -88,6 +95,7 @@
                         })
                             
                     } else {
+                        // si no es una pelicula favorita, doy la opcion de Agregar a favoritos
                         Swal.fire({
                             title: '<h5 class="modal-title" id="exampleModalLabel">' + myJson.title + ' - ' + myJson.release_date + '</h5>',
                             html:
@@ -109,14 +117,20 @@
                         })
                     }
                 } else {
-                    // si no hay cache 
+                    // si el cache no esta cargado, no existe
+                    // realizo una llamada fetch para que se pueda ejecutar la aplicacion correctamente
                     fetch(URL)
                     .then(function(response) {
                         return response.json();
                     })
                     .then(function(myJson) {
+                        // obtengo la informacion de la pelicula clickeada
                         infoPelicula = myJson;
+                        infoPelicula.idMovieDB = movieId;
+                        infoPelicula.posicion_toprated = (indice + 1);
+                        // compruebo si la pelicula clickeada ya es una pelicula favorita
                         if (pelisIds.includes(movieId)) {
+                            // si es una pelicula favorita, doy la opcion de Quitar de los favoritos
                             peliculasFavoritas.forEach(peliFav => {
                                 if (movieId === peliFav.idMovieDB) {
                                     tablePeliId = peliFav.id
@@ -146,6 +160,7 @@
                             })
                             
                         } else {
+                            // si no es una pelicula favorita, doy la opcion de Agregar a favoritos
                             Swal.fire({
                                 title: '<h5 class="modal-title" id="exampleModalLabel">' + myJson.title + ' - ' + myJson.release_date + '</h5>',
                                 html:
@@ -183,9 +198,8 @@
                             const url = '/guardarPeliFavorita';
 
                             fetch(url, {
-                                method: 'POST', // or 'PUT'
-                                body: JSON.stringify(infoPelicula), // data can be `string` or {object}!
-                                // body: JSON.stringify({id: indice}), // data can be `string` or {object}!
+                                method: 'POST',
+                                body: JSON.stringify(infoPelicula),
                                 credentials: "same-origin",
                                 headers:{
                                     'Content-Type': 'application/json',
@@ -196,6 +210,7 @@
                             .then(response => {
                                 console.log('Success:', response)
                                 setTimeout(() => {
+                                    // recargo la pagina
                                     window.location.reload()
                                 }, 500);
                             });
@@ -206,12 +221,12 @@
                     if (document.querySelector('.chauFav')) {
                         let chauFav = document.querySelector('.chauFav');
                         chauFav.addEventListener('click', () => {
-                            console.log(tablePeliId);
-                            
+
+                            // envio el id de la pelicula por parametro
                             var deleteUrl = '/deletePeliFavorita/'+tablePeliId;
 
                             fetch(deleteUrl, {
-                                method: 'DELETE', // or 'PUT'
+                                method: 'DELETE',
                                 headers:{
                                 'Content-Type': 'application/json',
                                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
@@ -222,6 +237,7 @@
                                 console.log(response);
 
                                 setTimeout(() => {
+                                    // recargo la pagina
                                     window.location.reload()
                                 }, 500);
                             });
@@ -230,11 +246,15 @@
                     }
                 }, 1000);
             @else
+            // si el usuario no esta autenticado
             fetch(URL)
                 .then(function(response) {
                     return response.json();
                 })
                 .then(function(myJson) {
+                    // le doy la opcion de agregar a favoritos
+                    // pero cuando clickea lo envio al loguearse
+                    // y si no, registrarse
                     Swal.fire({
                         title: '<h5 class="modal-title" id="exampleModalLabel">' + myJson.title + ' - ' + myJson.release_date + '</h5>',
                         html:
